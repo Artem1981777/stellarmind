@@ -66,8 +66,9 @@ export default function App() {
       const xlm = account.balances.find((b: any) => b.asset_type === "native")
       setWalletBalance(xlm ? parseFloat(xlm.balance).toFixed(4) : "0")
       toast("Wallet loaded: " + addr.slice(0,8) + "...")
-    } catch(e) {
-      toast("Invalid secret key")
+    } catch(e: any) {
+      console.error("Wallet error:", e)
+      toast("Wallet error: " + (e?.message || "Invalid secret key"))
     }
   }
 
@@ -183,8 +184,9 @@ export default function App() {
         txCount: newPayments.length
       })
 
-    } catch(e) {
-      toast("Agent error — check wallet and API key")
+    } catch(e: any) {
+      console.error("Agent error:", e)
+      toast("Error: " + (e?.message || "Check wallet and API key"))
     }
     setRunning(false)
   }
