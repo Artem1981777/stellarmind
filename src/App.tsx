@@ -150,7 +150,9 @@ export default function App() {
         addStep({ id: "pay_" + toolName, type: "paying", message: `Paying ${tool.cost} XLM for ${tool.name}...`, timestamp: Date.now() })
         
         try {
+          console.log("Sending payment for", toolName, tool.cost, "XLM")
           const txHash = await sendStellarPayment(walletKey, tool.cost, "StellarMind:" + toolName.slice(0,20))
+          console.log("TX hash:", txHash)
           totalCost += parseFloat(tool.cost)
           
           const payment: Payment = {
