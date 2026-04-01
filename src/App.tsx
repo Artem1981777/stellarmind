@@ -192,13 +192,14 @@ export default function App() {
           })
         })
         const planData = await planRes.json()
+        console.log("Claude response:", JSON.stringify(planData))
         const planText = planData.content?.[0]?.text || ""
         const jsonMatch = planText.match(/\{[\s\S]*\}/)
         if (jsonMatch) {
           plan = JSON.parse(jsonMatch[0])
         }
-      } catch {
-        // fallback to smart keyword matching
+      } catch(err: any) {
+        console.error("Claude error:", err)
         const q = query.toLowerCase()
         plan.tools = q.includes("price") || q.includes("market") ? ["Web Search", "Data Analysis"] :
                      q.includes("code") ? ["Web Search", "Code Execution"] : ["Web Search", "Premium API"]
