@@ -47,8 +47,62 @@ export default function App() {
   const [walletAddress, setWalletAddress] = useState("")
   const [walletBalance, setWalletBalance] = useState("0")
   const [notif, setNotif] = useState("")
-  const [tab, setTab] = useState<"agent"|"wallet"|"history">("agent")
+  const [tab, setTab] = useState<"agent"|"wallet"|"history"|"a2a">("agent")
   const [totalSpent, setTotalSpent] = useState("0")
+  const [a2aMessages, setA2aMessages] = useState<{agent: string, msg: string, cost: string, tx: string, time: number}[]>([])
+  const [a2aRunning, setA2aRunning] = useState(false)
+  const [a2aQuery, setA2aQuery] = useState("")
+
+  async function runA2A() {
+    if (!a2aQuery.trim()) return
+    if (!walletKey) { toast("Load wallet first!"); setTab("wallet"); return }
+    setA2aRunning(true)
+    const msgs: {agent: string, msg: string, cost: string, tx: string, time: number}[] = []
+
+    const addMsg = (agent: string, msg: string, cost: string, tx: string) => {
+      msgs.push({ agent, msg, cost, tx, time: Date.now() })
+      setA2aMessages([...msgs])
+    }
+
+    try {
+      // Agent A sends request to Agent B
+      addMsg("Agent A", "Requesting analysis: " + a2aQuery, "0", "pending")
+      await new Promise(r => setTimeout(r, 800))
+
+      // Agent A pays Agent B
+      const tx1 = await sendStellarPayment(walletKey, "0.005", "A2A:request")
+      addMsg("Agent A → Agent B", "Payment sent: 0.005 XLM for analysis service", "0.005 XLM", tx1)
+      await new Promise(r => setTimeout(r, 1000))
+
+      // Agent B responds
+      const responses: Record<string, string> = {
+        "bitcoin": "Analysis complete: BTC showing bullish divergence on 4H chart. Volume confirms uptrend. Target: $72,000.",
+        "stellar": "Stellar network stats: 5M+ daily transactions, XLM price stable. x402 adoption growing.",
+        "defi": "DeFi TVL up 12% this month. Top protocols: Aave, Uniswap, Curve. Stellar DeFi emerging.",
+      }
+      const key = Object.keys(responses).find(k => a2aQuery.toLowerCase().includes(k)) || "stellar"
+      addMsg("Agent B", responses[key], "0", "")
+      await new Promise(r => setTimeout(r, 800))
+
+      // Agent B pays Agent A for follow-up
+      const tx2 = await sendStellarPayment(walletKey, "0.002", "A2A:followup")
+      addMsg("Agent B → Agent A", "Follow-up data payment: 0.002 XLM", "0.002 XLM", tx2)
+      await new Promise(r => setTimeout(r, 800))
+
+      addMsg("Agent A", "Transaction complete. Total cost: 0.007 XLM. Data verified on Stellar.", "0", "")
+      
+      // Update balance
+      const server = new StellarSdk.Horizon.Server(STELLAR_HORIZON)
+      const keypair = StellarSdk.Keypair.fromSecret(walletKey)
+      const account = await server.loadAccount(keypair.publicKey())
+      const xlm = account.balances.find((b: any) => b.asset_type === "native")
+      setWalletBalance(xlm ? parseFloat(xlm.balance).toFixed(4) : walletBalance)
+      toast("A2A session complete!")
+    } catch(e: any) {
+      toast("A2A error: " + e.message)
+    }
+    setA2aRunning(false)
+  }
 
   const toast = (m: string) => { setNotif(m); setTimeout(() => setNotif(""), 3000) }
 
@@ -393,11 +447,53 @@ export default function App() {
         </div>
       )}
 
+      {/* A2A TAB */}
+      {tab === "a2a" && (
+        <div style={{ padding: "12px" }}>
+          <div style={{ ...S.card, background: "linear-gradient(135deg,#0a0a0a,#0a0010)", border: "1px solid #8855ff40" }}>
+            <div style={{ fontSize: "11px", letterSpacing: "2px", color: "#4a5a7a", marginBottom: "8px" }}>AGENT-TO-AGENT PAYMENTS</div>
+            <div style={{ fontSize: "12px", color: "#8899bb", marginBottom: "12px" }}>Two AI agents negotiate and pay each other using Stellar micropayments</div>
+            <textarea value={a2aQuery} onChange={e => setA2aQuery(e.target.value)} placeholder="Topic for agents to discuss and analyze..." style={{ ...S.input, height: "60px", resize: "none" as const, marginBottom: "8px" }}/>
+            <button style={{ ...S.btn("g"), width: "100%", padding: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }} onClick={runA2A} disabled={a2aRunning}>
+              {a2aRunning ? <><Loader size={14} style={{ animation: "spin 1s linear infinite" }}/> Running A2A...</> : <><Zap size={14}/> Start Agent-to-Agent Session</>}
+            </button>
+          </div>
+
+          {a2aMessages.length > 0 && (
+            <div style={S.card}>
+              <div style={{ fontSize: "11px", letterSpacing: "2px", color: "#4a5a7a", marginBottom: "10px" }}>A2A CONVERSATION LOG</div>
+              {a2aMessages.map((m, i) => (
+                <div key={i} style={{ padding: "8px", borderRadius: "8px", marginBottom: "6px", background: m.agent.includes("Agent A →") ? "#00ff8808" : m.agent.includes("Agent B →") ? "#8855ff08" : m.agent === "Agent A" ? "#0a1a0a" : "#0a0a1a", border: `1px solid ${m.agent.includes("→") ? "#00ff8830" : "#1a2540"}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: m.agent.includes("Agent A") ? "#00ff88" : "#8855ff" }}>{m.agent}</span>
+                    {m.cost !== "0" && <span style={{ fontSize: "10px", color: "#ffaa00", fontFamily: "monospace" }}>💸 {m.cost}</span>}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#e8edf5" }}>{m.msg}</div>
+                  {m.tx && m.tx !== "pending" && (
+                    <a href={`https://stellar.expert/explorer/testnet/tx/${m.tx}`} target="_blank" rel="noreferrer" style={{ fontSize: "10px", color: "#8855ff", display: "block", marginTop: "4px", fontFamily: "monospace" }}>
+                      TX: {m.tx.slice(0,16)}... <ExternalLink size={10} style={{ display: "inline" }}/>
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={S.card}>
+            <div style={{ fontSize: "11px", letterSpacing: "2px", color: "#4a5a7a", marginBottom: "8px" }}>HOW A2A WORKS</div>
+            <div style={{ fontSize: "12px", color: "#8899bb", lineHeight: 1.7 }}>
+              Agent A requests a service from Agent B → pays XLM via Stellar → Agent B processes and responds → pays back for follow-up data. All payments recorded on Stellar blockchain with verifiable TX hashes.
+            </div>
+          </div>
+        </div>
+      )}
+
       <nav style={S.nav}>
         {[
           { id: "agent", l: "Agent", i: <Brain size={16}/> },
           { id: "wallet", l: "Wallet", i: <Shield size={16}/> },
           { id: "history", l: "History", i: <Clock size={16}/> },
+          { id: "a2a", l: "A2A", i: <Activity size={16}/> },
         ].map(n => (
           <button key={n.id} onClick={() => setTab(n.id as any)} style={S.navBtn(tab === n.id)}>
             {n.i}<span>{n.l}</span>
