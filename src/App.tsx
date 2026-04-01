@@ -3,8 +3,7 @@ import { Brain, Zap, CheckCircle, Clock, Loader, ExternalLink, Shield, Activity 
 import * as StellarSdk from "@stellar/stellar-sdk"
 
 const STELLAR_HORIZON = "https://horizon-testnet.stellar.org"
-const CLAUDE_API = "https://api.anthropic.com/v1/messages"
-const KEY = (import.meta as any).env.VITE_CLAUDE_KEY
+const CLAUDE_API = "/api/claude"
 const STELLAR_NETWORK = StellarSdk.Networks.TESTNET
 
 interface Payment {
@@ -183,9 +182,7 @@ export default function App() {
           method: "POST",
           headers: { 
             "Content-Type": "application/json", 
-            "x-api-key": KEY, 
-            "anthropic-version": "2023-06-01", 
-            "anthropic-dangerous-direct-browser-calls": "true" 
+            "anthropic-version": "2023-06-01" 
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-20250514",
