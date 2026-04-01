@@ -49,6 +49,8 @@ export default function App() {
   const [notif, setNotif] = useState("")
   const [tab, setTab] = useState<"agent"|"wallet"|"history"|"a2a">("agent")
   const [totalSpent, setTotalSpent] = useState("0")
+  const [spendingLimit, setSpendingLimit] = useState("0.1")
+  const [limitEnabled, setLimitEnabled] = useState(true)
   const [a2aMessages, setA2aMessages] = useState<{agent: string, msg: string, cost: string, tx: string, time: number}[]>([])
   const [a2aRunning, setA2aRunning] = useState(false)
   const [a2aQuery, setA2aQuery] = useState("")
@@ -204,6 +206,11 @@ export default function App() {
         addStep({ id: "pay_" + toolName, type: "paying", message: `Paying ${tool.cost} XLM for ${tool.name}...`, timestamp: Date.now() })
         
         try {
+          // Soroban-style spending limit check
+          if (limitEnabled && (parseFloat(totalSpent) + parseFloat(tool.cost)) > parseFloat(spendingLimit)) {
+            addStep({ id: "limit_" + toolName, type: "done", message: "🛡️ Soroban spending limit reached! Max: " + spendingLimit + " XLM. Transaction blocked.", timestamp: Date.now() })
+            break
+          }
           console.log("Sending payment for", toolName, tool.cost, "XLM")
           const txHash = await sendStellarPayment(walletKey, tool.cost, "StellarMind:" + toolName.slice(0,20))
           console.log("TX hash:", txHash)
@@ -385,6 +392,30 @@ export default function App() {
                 <a href={`https://stellar.expert/explorer/testnet/account/${walletAddress}`} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: "10px", fontSize: "11px", color: "#8855ff" }}>
                   View on Stellar Explorer →
                 </a>
+                
+                {/* Soroban Spending Limit */}
+                <div style={{ marginTop: "12px", background: "#111", border: "1px solid #8855ff40", borderRadius: "8px", padding: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <div style={{ fontSize: "11px", letterSpacing: "1px", color: "#8855ff" }}>🛡️ SOROBAN SPENDING LIMIT</div>
+                    <button onClick={() => setLimitEnabled(!limitEnabled)} style={{ background: limitEnabled ? "#00ff8820" : "#ff336620", border: limitEnabled ? "1px solid #00ff8840" : "1px solid #ff336640", borderRadius: "4px", color: limitEnabled ? "#00ff88" : "#ff3366", padding: "2px 8px", fontSize: "10px", cursor: "pointer", fontWeight: 700 }}>
+                      {limitEnabled ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#4a5a7a", marginBottom: "6px" }}>Max XLM per session (simulates Soroban contract guardrails)</div>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input value={spendingLimit} onChange={e => setSpendingLimit(e.target.value)} style={{ ...S.input, flex: 1, fontFamily: "monospace" }} placeholder="0.1"/>
+                    <span style={{ color: "#8899bb", fontSize: "12px", alignSelf: "center" }}>XLM</span>
+                  </div>
+                  <div style={{ marginTop: "6px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#4a5a7a", marginBottom: "3px" }}>
+                      <span>Spent</span>
+                      <span style={{ fontFamily: "monospace" }}>{totalSpent} / {spendingLimit} XLM</span>
+                    </div>
+                    <div style={{ background: "#222", borderRadius: "3px", height: "4px" }}>
+                      <div style={{ background: parseFloat(totalSpent) >= parseFloat(spendingLimit) ? "#ff3366" : "linear-gradient(90deg,#8855ff,#00ff88)", height: "4px", borderRadius: "3px", width: Math.min((parseFloat(totalSpent)/parseFloat(spendingLimit))*100, 100) + "%" }}/>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <>
