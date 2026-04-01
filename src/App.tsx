@@ -3,6 +3,8 @@ import { Brain, Zap, CheckCircle, Clock, Loader, ExternalLink, Shield, Activity 
 import * as StellarSdk from "@stellar/stellar-sdk"
 
 const STELLAR_HORIZON = "https://horizon-testnet.stellar.org"
+const CLAUDE_API = "https://api.anthropic.com/v1/messages"
+const KEY = (import.meta as any).env.VITE_CLAUDE_KEY
 const STELLAR_NETWORK = StellarSdk.Networks.TESTNET
 
 interface Payment {
@@ -174,26 +176,36 @@ export default function App() {
       // Step 1: AI decides what tools to use
       addStep({ id: "1", type: "thinking", message: "Analyzing your request and selecting tools...", timestamp: Date.now() })
       
-      // Smart tool selection based on query keywords
-      const queryLower = query.toLowerCase()
-      const selectedTools = []
-      if (queryLower.includes("price") || queryLower.includes("market") || queryLower.includes("trend")) selectedTools.push("Web Search", "Data Analysis")
-      else if (queryLower.includes("code") || queryLower.includes("build") || queryLower.includes("develop")) selectedTools.push("Web Search", "Code Execution")
-      else if (queryLower.includes("stellar") || queryLower.includes("defi") || queryLower.includes("crypto")) selectedTools.push("Web Search", "Premium API")
-      else selectedTools.push("Web Search", "Data Analysis")
-
-      const answers: Record<string, string> = {
-        "bitcoin": "Based on on-chain data analysis and market research: Bitcoin shows strong support at $65,000 with increasing institutional demand. Hash rate at all-time highs suggests miner confidence. Key resistance at $72,000. Short-term outlook: consolidation phase before next leg up.",
-        "stellar": "Stellar ecosystem analysis: XLM transaction volume up 340% YoY. Stellar Development Foundation has 50+ major partnerships including MoneyGram and IBM. x402 protocol enables machine-to-machine payments. Strong position in cross-border payments and tokenized assets.",
-        "defi": "DeFi protocol comparison: Aave leads in lending TVL ($15B+), Uniswap dominates DEX volume, Curve optimal for stablecoin swaps. Stellar-based protocols offer sub-cent transaction costs vs Ethereum L1. Key metrics: TVL, volume, security audit history.",
-      }
-      
-      const answerKey = Object.keys(answers).find(k => queryLower.includes(k)) || "stellar"
-      
-      const plan = {
-        tools: selectedTools,
-        reasoning: "Selected tools based on query analysis and required data sources",
-        answer: answers[answerKey] || "Research complete. Based on aggregated data from paid tools: " + query + " — Analysis shows positive momentum with key opportunities in the Stellar ecosystem."
+      // Real Claude AI for tool selection and answer
+      let plan = { tools: ["Web Search", "Data Analysis"], reasoning: "Default selection", answer: "" }
+      try {
+        const planRes = await fetch(CLAUDE_API, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json", 
+            "x-api-key": KEY, 
+            "anthropic-version": "2023-06-01", 
+            "anthropic-dangerous-direct-browser-calls": "true" 
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 600,
+            system: "You are StellarMind, an AI agent that pays for tools via Stellar blockchain micropayments. Select 2-3 tools and provide a comprehensive answer. Available tools: Web Search (0.001 XLM), Data Analysis (0.002 XLM), Code Execution (0.003 XLM), Premium API (0.01 XLM). Respond in JSON format with three fields: tools (array of tool names), reasoning (string), answer (detailed string).",
+            messages: [{ role: "user", content: "Query: " + query }]
+          })
+        })
+        const planData = await planRes.json()
+        const planText = planData.content?.[0]?.text || ""
+        const jsonMatch = planText.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          plan = JSON.parse(jsonMatch[0])
+        }
+      } catch {
+        // fallback to smart keyword matching
+        const q = query.toLowerCase()
+        plan.tools = q.includes("price") || q.includes("market") ? ["Web Search", "Data Analysis"] :
+                     q.includes("code") ? ["Web Search", "Code Execution"] : ["Web Search", "Premium API"]
+        plan.answer = "Analysis for: " + query + " — Based on market data and on-chain metrics, key insights suggest monitoring current trends closely."
       }
       
       addStep({ id: "2", type: "thinking", message: `Selected tools: ${plan.tools?.join(", ")}. Reasoning: ${plan.reasoning}`, timestamp: Date.now() })
