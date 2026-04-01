@@ -1,73 +1,36 @@
-# React + TypeScript + Vite
+# StellarMind
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+AI Agent that pays for tools using Stellar micropayments (x402 pattern)
 
-Currently, two official plugins are available:
+## Live Demo
+https://stellarmind-five.vercel.app
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## How it works
+1. User asks a question
+2. Agent selects required tools
+3. Agent pays with real XLM on Stellar testnet
+4. Returns answer with verifiable TX receipts
 
-## React Compiler
+## Features
+- AI Agent with autonomous tool selection
+- x402 Micropayments - real Stellar testnet transactions
+- Agent-to-Agent (A2A) payments
+- Soroban Spending Limits
+- Transaction History with Stellar Explorer links
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
+- React + TypeScript + Vite
+- @stellar/stellar-sdk
+- Stellar Testnet (Horizon API)
+- Claude AI (Anthropic)
+- Vercel
 
-## Expanding the ESLint configuration
+## Tools and Costs
+- Web Search: 0.001 XLM
+- Data Analysis: 0.002 XLM
+- Code Execution: 0.003 XLM
+- Image Analysis: 0.005 XLM
+- Premium API: 0.010 XLM
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Built for Stellar Hacks Agents 2026
+Prize pool: $10,000 in XLM
